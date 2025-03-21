@@ -1,0 +1,142 @@
+# Day- I                     SQL Practices session 
+
+#--1.             Display the departments information from department table.     
+
+select * from departments 
+-- 2.             Display the details of all employees with department names. 
+select e.*,d.department_name from employees e,  departments d 
+where e.department_id=e.department_id
+
+---3.             Display the Last name and job id for all employees.       
+
+select last_name,job_id from employees
+-- 4.             Display Last name and salary of employees without managers/valid managers id..        
+
+select last_name,salary from employees where manager_id =0
+SELECT e.last_name, e.salary
+FROM employees e
+LEFT JOIN employees m ON e.manager_id = m.employee_id
+WHERE e.manager_id IS NULL OR m.employee_id IS NULL;
+
+
+select a.last_name, a.salary from employees a
+where a.manager_id not in (select employee_id from employees)
+
+-- 5.             Display employee id, salary, commission_pct, and total salary (salary+commission) for each employee. 
+
+select employee_id,salary,commission_pct,(salary+(salary*commission_pct)) total_salary from employees
+
+--(commission_pct is a decimal col where .4 means 40%  commission of salary is there.)
+--6.             Display Last name and annual salary (salary+commission)for all employees. 
+-- clickhouse is not accepting round function to get proper decimal value but it works in oracle
+select last_name, salary*12 ,
+toDecimal64((salary+(salary*commission_pct)),2)*12 annual_salary 
+from employees
+select last_name, (salary+(salary*commission_pct))*12 as annual_sal from employees
+
+select last_name,
+       toDecimal64((salary + (salary * coalesce(commission_pct, 0))), 2) * 12 as annual_salary
+from employees;
+
+select last_name,sal,annual_salary*12 from 
+(select last_name, salary*12 sal,
+--,(salary*12*commission_pct)+(salary*12)
+(salary+(salary*commission_pct)) annual_salary 
+from employees) t
+
+# 7.    Display the Last name, salary, department_id of all employees who are working in department number 10. 
+    select last_name,salary,department_id from employees where department_id=10
+
+-- 8.             Display the Last names, job_id, salary of all employees working as clerks and drawing a salary more than 3000. 
+
+select e.last_name,e.job_id,e.salary from employees e  
+where  e.salary > 3000 and UPPER(e.job_id) like '%CLERK'
+
+-- 9.             Display employee number,Last nameand commission for employees who earn commission. 
+
+select employee_id,last_name,commission_pct from employees where commission_pct >0
+and commission_pct IS NOT NULL;
+
+-- 10.         Display employee number, Last name and commission of employees who do not earn any commission.
+
+select employee_id,last_name,commission_pct from employees where commission_pct =0
+
+-- 11.         Display the Last name, job id and salary of employees who are working as SA_MAN, SA_REP, IT_PROG and drawing a salary more than 3000. 
+select last_name,job_id, salary from employees e 
+where salary>3000 and job_id in ('SA_MAN','SA_REP','IT_PROG')
+
+-- 12.         Display the Last name,hire date of employees who have joined in the company in last 20 years. 
+
+select last_name,hire_date
+from employees e
+where year(hire_date) >= year(today())-20
+
+
+
+-- 13.         Display the last name and hire date of employees who have joined the company before 1st Jan 08 and after 31st dec 08. 
+select last_name, hire_date from employees 
+where hire_date between toDate('01-JAN-2008') and toDate('31-DEC-2008')
+
+--14.         Find employees who have worked in more than one department.
+select employee_id ,rk  from 
+(select count(*) over(partition by employee_id) rk ,employee_id from employees ) y
+where rk>1
+
+select employee_id, COUNT(distinct department_id) as department_count
+from job_history
+group BY employee_id
+having department_count > 1;
+
+--group by employee_id
+--15.         Display the names of employees whose last name starts with alphabet S. 
+select last_name,employees.* from employees where last_name like '%S'
+
+-- 16.	 Display the last name of employees whose last name is exactly five characters in length.
+
+select last_name from employees where  length(last_name) =5
+-- 17.	Display the total number of employees working in each country.
+
+select count(e.employee_id),c.country_name from employees e, departments d,locations l, countries c 
+where e.department_id=d.department_id
+and d.location_id=l.location_id
+and l.country_id=c.country_id
+group by c.country_name
+
+-- 18.	Display the name , department and salary of employees who has max salary in US and UK.
+
+select re.employee_id,re.first_name,re.salary,re.country_name from (
+select rank() over(partition by c.country_name order by e.salary desc) rv,e.*,c.country_name
+from employees e, departments d,locations l, countries c 
+where e.department_id=d.department_id
+and d.location_id=l.location_id
+and l.country_id=c.country_id
+and c.country_name in ('United States of America','United Kingdom')
+) re
+where rv = 1
+
+
+select e.last_name, d.department_name, e.salary, l.country_id
+from employees e
+join departments d on e.department_id = d.department_id
+join locations l on d.location_id = l.location_id
+where (l.country_id = 'US' and e.salary =
+       (select max(salary) from employees e2
+        join departments d2 on e2.department_id = d2.department_id
+        join locations l2 on d2.location_id = l2.location_id
+        where l2.country_id = 'US'))
+   or (l.country_id = 'UK' and e.salary =
+       (select max(salary) from employees e2
+        join departments d2 on e2.department_id = d2.department_id
+        join locations l2 on d2.location_id = l2.location_id
+        where l2.country_id = 'UK'));
+
+
+-- 19.	Display the employee_id, last_name of employees who are not working as managers.
+
+select employee_id,last_name from employees
+where employee_id not in (select distinct manager_id from employees where manager_id is not null)
+
+--20.	Display the department name and corresponding manager’s employee_id.
+
+select department_name,department_id from departments 
+
