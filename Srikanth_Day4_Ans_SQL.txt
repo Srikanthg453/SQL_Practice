@@ -1,0 +1,91 @@
+Day- 4                     SQL Practices session 
+1.	Display the last name, salary, department id of the employees who earn more than average salary in their respective departments (Without the window function).
+
+select last_name, salary,department_id  from employees e1 ,
+(select avg(salary) sal,department_id from employees group by department_id) e2 
+where e1.salary>e2.sal and e1.department_id=e2.department_id
+
+2.	Display last name of employees with their dept name, whose manager is King (Direct Reportees).
+
+select last_name ,department_name from employees e , departments d where e.department_id=d.department_id
+and e.manager_id in (select employee_id from employees where last_name='King')
+
+
+
+3.	Display last name of employees with their dept name, whose indirect manager is King (upto 2 levels).
+
+select last_name ,department_name from employees e , departments d where e.department_id=d.department_id
+and e.manager_id in  (select e1.employee_id from employees e1 where e1.manager_id in (select employee_id from employees where last_name='King')
+)
+UNION ALL
+ select last_name ,department_name from employees e1, departments d where e1.department_id=d.department_id and e1.manager_id in (select employee_id from employees where last_name='King')
+
+
+
+a.	Eg: Suppose, Prem reports to king. We also need to find people reporting to prem and print them. 
+b.	Note: ClickHouse does not support recursive CTEs
+
+4.	Display those employees whose salary is greater than his manager salary.
+
+correct:- select e1.* from employees e1, employees e2 
+where e1.manager_id=e2.employee_id and e1.salary>e2.salary
+
+
+5.	Display those employees whose salary is at least 20% greater than his manager salary.
+
+select e.* from employees e, employees m where e.manager_id=m.employee_id and e.salary> (1.2*m.salary)
+
+
+6.	Display last name, job id and manager name of all employees.
+-- this is giving 106 records without the record of employee who do not have manager
+select e.last_name , e.job_id,m.last_name,m.first_name from employees e, employees m where e.manager_id=m.employee_id
+-- left join to use
+-- Below is correct one with 107 records
+SELECT 
+    e.last_name AS employee_last_name, 
+    e.job_id, 
+    m.last_name AS manager_last_name, 
+    m.first_name AS manager_first_name
+FROM employees e
+LEFT JOIN employees m 
+    ON e.manager_id = m.employee_id;
+
+
+
+7.	Display department names where employee count exceeds the average employee count across all departments..
+
+select d.department_name from employees e , departments d where e.department_id=d.department_id group by d.department_name
+having count(employee_id) > 
+(select avg(e_count) from 
+(select count(*) e_count from employees group by department_id) t )
+
+8.	Display last name and hire date of employees who joined within the first 10 days of any month and on a Monday or Friday.
+
+select last_name,hire_date from employees where
+day(hire_date)<=10 and (toDayOfMonth(hire_date) =1 or toDayOfMonth(hire_date)=5)
+
+select last_name, hire_date
+ FROM employees
+ where extract(day from hire_date)<=10
+ and (dayofweek(hire_date)=1 or dayofweek(hire_date)=5)
+ 
+ 
+
+9.	Display the manager name who is having maximum number of employees working under him?
+
+with emp_count as 
+(select count(*) ec ,e.manager_id  mid from employees e
+group by e.manager_id)
+
+select e.last_name,e.employee_id from emp_count empc, employees e where e.employee_id=empc.mid order by ec desc limit 1 
+
+10.	Display the manager’s name who has the highest total salary from all employees reporting to them.
+
+select * from employees where employee_id in (
+select manager_id from 
+(select sum(salary) total_salary , manager_id from employees group by manager_id ) t
+order by total_salary desc limit 1)
+
+
+
+
