@@ -1,0 +1,117 @@
+Day- 5                           SQL Practices session 
+1. Rank Employees by Salary within Each Department
+Question: Retrieve each employee's first name, department ID, salary, and 
+their rank within their department based on salary (highest salary gets rank 1).
+
+select first_name,department_id,salary,
+rank() over(partition by department_id order by salary desc) rk 
+from employees
+
+
+________________________________________
+2. Calculate Running Total of Salaries in Each Department
+Question: Find the cumulative sum of salaries for each department.
+
+-- for depart_id 50 is giving wrong running total if we use only order by salary so use both salary and employeeid
+select department_id,
+       salary, 
+	   sum(salary) over (partition by department_id order by salary,employee_id desc) as running_total from employees;
+
+SELECT 
+    first_name, 
+    department_id, 
+    salary,
+    SUM(salary) OVER (
+        PARTITION BY department_id 
+        ORDER BY salary ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+    ) AS cumulative_salary
+FROM employees;
+________________________________________
+3. Find the Difference Between an Employee’s Salary and the Department Average
+Question: Show the employee’s salary and the difference from the average salary in their department.
+
+select salary, avg(salary) over(partition by department_id) as avg,
+salary-avg(salary) over(partition by department_id) as  diff
+from employees
+
+
+________________________________________
+4. Assign Row Numbers to Employees Based on Hire Date
+Question: Assign a unique row number to employees based on their hiring date within each department (earliest hired gets rank 1).
+
+select department_id,employee_id, ROW_NUMBER() over(partition by department_id order by hire_date)
+from employees
+
+________________________________________
+5. Find the Top 3 Highest Salaries in Each Department
+Question: Retrieve employees with the top 3 salaries in each department.
+
+select department_id,
+salary as top1,
+LEAD(salary,1,0) over(partition by department_id order by salary desc ) top2,
+LEAD(salary,2,0) over(partition by department_id order by salary desc) top3
+from employees
+
+select department_id, employee_id, salary
+from (
+    select department_id, employee_id, salary,
+           rank() over (partition by department_id order by salary desc) AS rk
+    from employees
+) t where rk <= 3;
+
+
+________________________________________
+6. Calculate Percentage Contribution of Each Employee's Salary to Their Department's Total Salary
+Question: Find each employee’s salary as a percentage of their department's total salary.
+
+select employee_id,department_id,salary,depart_total_salary,
+(salary/depart_total_salary)*100 as emp_deptwise_percent from 
+(select  department_id,salary,employee_id,
+sum(salary) over(partition by department_id) depart_total_salary
+from employees)
+temp 
+________________________________________
+7. Find the Previous Employee’s Salary in Each Department
+Question: Retrieve each employee’s salary along with the previous employee’s salary in the same department.
+
+select salary , LAG(salary,1,0) over(partition by department_id order by hire_date desc) previous_salary
+select department_id,salary,array_agg(salary) OVER (
+            PARTITION BY department_id
+            ORDER BY salary
+                        ROWS BETWEEN 1 PRECEDING AND 1 PRECEDING
+)[1]
+from employees
+________________________________________
+8. Find the Next Employee’s Salary in Each Department
+Question: Retrieve each employee’s salary along with the next employee’s salary in the same department. (next employee means next row’s salary within the same department)
+
+
+select salary , LEAD(salary,1,0) over(partition by department_id order by hire_date desc) previous_salary
+SELECT department_id, 
+       salary, 
+       array_agg(salary) OVER (
+            PARTITION BY department_id 
+            ORDER BY hire_date DESC
+            ROWS BETWEEN 1 FOLLOWING AND 1 FOLLOWING
+       )[1] AS next_salary
+FROM employees;
+________________________________________
+9. Find Employees Who Earn More Than the Department's Average Salary
+Question: List employees whose salary is higher than the average salary of their department.
+
+
+select e1.employee_id,e1.salary,e1.department_id,e2.avg_salary from employees e1 JOIN
+(select department_id,avg(salary) as avg_salary
+from employees
+group by department_id) e2
+ON e1.department_id=e2.department_id
+where e1.salary>e2.avg_salary
+
+
+________________________________________
+10. Find the Length of Employment for Each Employee
+Question: Calculate the number of days each employee has worked since their hire date.
+These questions will help you master window functions like RANK(), DENSE_RANK(), ROW_NUMBER(), SUM(), AVG(), LAG(), and LEAD(), while also reinforcing partitioning and ordering concepts.
+
+select employee_id,today()-hire_date from employees
+
