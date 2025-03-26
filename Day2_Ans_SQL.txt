@@ -1,0 +1,54 @@
+Day- 2                     SQL Practices session 
+1.	Display the total salary (salary + commission_pct) being paid to all employees grouped by department, and only include departments where the total exceeds 50000..
+
+select SUM(salary+(salary*COALESCE(commission_pct,0))) total_salary , department_id 
+from employees group by department_id
+having SUM(salary + (salary * COALESCE(commission_pct, 0))) > 50000;
+
+
+2.	Display the last name, salary, and job_id of the employee(s) earning the maximum salary departments 20 , 30 and 90 .
+
+
+select last_name,salary, job_id,department_id,employee_id from employees e,
+(select max(salary) sal from employees where department_id in (20,30,90)group by department_id) d 
+where e.salary=d.sal
+and department_id in (20,30,90)
+
+
+
+3.	Display the 2nd highest salary without rank().
+select salary from employees where salary < 
+(select max(salary) from employees ) order by salary  desc limit 1
+
+4.	Display the last_name, salary of SA_MAN employees who earn more than the maximum salary of any SA_REP.
+
+select last_name,salary from employees where job_id ='SA_MAN' and salary  > (select max(salary) from employees where job_id='SA_REP')
+
+5.	Display department_id, total number of employees, and average salary in each department, for departments with at least 5 employees.
+
+select department_id,avg(salary),count(employee_id) from employees group by department_id having count(employee_id) > 5
+
+6.	Display department_id and number of employees for departments where employee count > 3 AND total salary > 30000.
+select department_id,count(employee_id) from employees group by department_id having count(employee_id) > 3 and sum(salary) > 30000 
+
+7.	Display the top 3 earners by salary with their last name and salary.
+select last_name from 
+(select last_name,dense_rank() over(order by salary desc) rk from employees )
+t
+where rk < 4
+8.	Display the last_name, salary, department_id of employees who are working in ‘Sales’ departments.
+
+select last_name,salary,department_id from employees e, departments d 
+where e.department_id=d.department_id 
+and department_name='Sales'
+
+9.	Display last_name, department_name, and region_name of all employees.
+select e.last_name,d.department_name,r.region_name from employees e, departments d,locations l,
+countries c, regions r where e.department_id=d.department_id
+and d.location_id=l.location_id
+and l.country_id=c.country_id
+and c.region_id=r.region_id
+
+10.	Display last_name, salary, and job_title of employees whose salary is an odd number.
+select e.last_name,e.salary,j.job_title from employees e, jobs j 
+where e.job_id=j.job_id and (salary%2) <> 0
